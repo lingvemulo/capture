@@ -58,7 +58,13 @@ async function transcribe(request, env) {
           detail: detail.slice(0, 500),
         })
       );
-      return json({ error: `Transcription service error (${dgRes.status})` }, 502);
+      let upstream = "";
+      try { upstream = JSON.parse(detail).err_msg || ""; } catch {}
+      if (!upstream) upstream = detail.slice(0, 200);
+      return json(
+        { error: `Transcription service error (${dgRes.status})${upstream ? ": " + upstream : ""}` },
+        502
+      );
     }
 
     const data = await dgRes.json();
