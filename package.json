@@ -1,0 +1,13 @@
+{
+  "name": "voice-notes",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal dictation notes app — record, transcribe via Deepgram, save and edit notes. Cloudflare Worker + PWA.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

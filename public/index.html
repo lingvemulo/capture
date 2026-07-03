@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Voice Notes</title>
+<meta name="theme-color" content="#4f46e5">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Voice Notes">
+<style>
+  :root {
+    --bg: #f6f6fa;
+    --card: #ffffff;
+    --text: #1c1c28;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --danger: #dc2626;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(28, 28, 40, 0.08);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  input, textarea, button { font-family: inherit; }
+  /* prevent iOS Safari auto-zoom on focus */
+  input, textarea { font-size: 16px; }
+
+  .hidden { display: none !important; }
+
+  /* ---------- List view ---------- */
+  #listView {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 0 16px calc(170px + env(safe-area-inset-bottom));
+  }
+  .appHeader {
+    padding: calc(18px + env(safe-area-inset-top)) 2px 4px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .appHeader h1 { font-size: 26px; margin: 0; letter-spacing: -0.02em; }
+  .appHeader .count { color: var(--muted); font-size: 14px; }
+  .searchWrap { margin: 10px 0 14px; }
+  #searchInput {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+    outline: none;
+    -webkit-appearance: none;
+  }
+  #searchInput:focus { border-color: var(--accent); }
+
+  .noteCard {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  .noteCard:active { background: var(--accent-soft); }
+  .noteTitle {
+    font-weight: 600;
+    font-size: 16px;
+    margin: 0 0 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .noteSnippet {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.45;
+    margin: 0 0 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .noteDate { color: var(--muted); font-size: 12px; }
+
+  #emptyState {
+    text-align: center;
+    color: var(--muted);
+    padding: 56px 24px;
+    line-height: 1.6;
+  }
+  #emptyState .big { font-size: 40px; margin-bottom: 10px; }
+
+  /* ---------- Editor view ---------- */
+  #editorView {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  .editorBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: calc(10px + env(safe-area-inset-top)) 10px 8px;
+  }
+  .editorBar button {
+    border: none;
+    background: none;
+    color: var(--accent);
+    font-size: 16px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .editorBar button:active { background: var(--accent-soft); }
+  #deleteBtn { color: var(--danger); }
+  .editorActions { display: flex; gap: 2px; }
+  .noteMeta {
+    color: var(--muted);
+    font-size: 12px;
+    padding: 0 18px 6px;
+  }
+  #noteText {
+    flex: 1;
+    border: none;
+    outline: none;
+    resize: none;
+    background: var(--bg);
+    padding: 10px 18px calc(170px + env(safe-area-inset-bottom));
+    font-size: 17px;
+    line-height: 1.55;
+  }
+
+  /* ---------- Record bar (shared) ---------- */
+  .recordBar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 18px 0 calc(16px + env(safe-area-inset-bottom));
+    text-align: center;
+    background: linear-gradient(to top, var(--bg) 65%, transparent);
+    pointer-events: none;
+  }
+  .recordBar > * { pointer-events: auto; }
+  .recTimer {
+    font-variant-numeric: tabular-nums;
+    color: var(--danger);
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    min-height: 20px;
+  }
+  .recTimer:empty { visibility: hidden; }
+  .recordBtn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+  }
+  .recordBtn svg { width: 30px; height: 30px; }
+  .recordBtn.recording {
+    background: var(--danger);
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.45);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  .recordBtn.busy {
+    background: var(--muted);
+    animation: none;
+    cursor: default;
+  }
+  .recordBtn.busy svg { display: none; }
+  .recordBtn .spinner {
+    display: none;
+    width: 26px;
+    height: 26px;
+    border: 3px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .recordBtn.busy .spinner { display: block; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.07); }
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .recHint { color: var(--muted); font-size: 13px; margin-top: 8px; }
+
+  /* ---------- Toast ---------- */
+  #toast {
+    position: fixed;
+    top: calc(14px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    background: var(--text);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 12px;
+    font-size: 14px;
+    max-width: 88vw;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+    z-index: 50;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div id="listView">
+  <header class="appHeader">
+    <h1>Voice Notes</h1>
+    <span class="count" id="noteCount"></span>
+  </header>
+  <div class="searchWrap">
+    <input id="searchInput" type="search" placeholder="Search notes…" autocomplete="off">
+  </div>
+  <main id="notesList"></main>
+  <div id="emptyState" class="hidden">
+    <div class="big">🎙️</div>
+    <div>No notes yet.<br>Tap the mic below and start talking.</div>
+  </div>
+</div>
+
+<div id="editorView" class="hidden">
+  <header class="editorBar">
+    <button id="backBtn">‹ Notes</button>
+    <div class="editorActions">
+      <button id="copyBtn">Copy</button>
+      <button id="deleteBtn">Delete</button>
+    </div>
+  </header>
+  <div class="noteMeta" id="noteMeta"></div>
+  <textarea id="noteText" placeholder="Start typing, or tap the mic to dictate…"></textarea>
+</div>
+
+<div class="recordBar">
+  <div class="recTimer" id="recTimer"></div>
+  <button class="recordBtn" id="recordBtn" aria-label="Record">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3z"/>
+      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-3.08A7 7 0 0 0 19 11z"/>
+    </svg>
+    <div class="spinner"></div>
+  </button>
+  <div class="recHint" id="recHint">Tap to dictate a new note</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+  const STORAGE_KEY = "voice-notes-v1";
+
+  const $ = (id) => document.getElementById(id);
+  const listView = $("listView"), editorView = $("editorView");
+  const notesList = $("notesList"), emptyState = $("emptyState");
+  const searchInput = $("searchInput"), noteCount = $("noteCount");
+  const noteText = $("noteText"), noteMeta = $("noteMeta");
+  const recordBtn = $("recordBtn"), recTimer = $("recTimer"), recHint = $("recHint");
+  const toastEl = $("toast");
+
+  let notes = load();
+  let currentId = null;
+  let recState = "idle"; // idle | recording | busy
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+  function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(notes)); }
+
+  function titleOf(note) {
+    const firstLine = (note.text || "").trim().split("\n")[0].trim();
+    return firstLine ? (firstLine.length > 64 ? firstLine.slice(0, 64) + "…" : firstLine) : "Untitled note";
+  }
+  function fmtDate(ts) {
+    const d = new Date(ts);
+    const sameYear = d.getFullYear() === new Date().getFullYear();
+    return d.toLocaleString([], {
+      month: "short", day: "numeric", ...(sameYear ? {} : { year: "numeric" }),
+      hour: "numeric", minute: "2-digit",
+    });
+  }
+
+  let toastTimer;
+  function toast(msg, ms = 2600) {
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove("show"), ms);
+  }
+
+  /* ---------- List ---------- */
+  function renderList() {
+    const q = searchInput.value.trim().toLowerCase();
+    const shown = notes
+      .filter((n) => !q || (n.text || "").toLowerCase().includes(q))
+      .sort((a, b) => b.updated - a.updated);
+
+    notesList.innerHTML = "";
+    for (const n of shown) {
+      const card = document.createElement("div");
+      card.className = "noteCard";
+      const title = document.createElement("p");
+      title.className = "noteTitle";
+      title.textContent = titleOf(n);
+      const snippet = document.createElement("p");
+      snippet.className = "noteSnippet";
+      const body = (n.text || "").trim();
+      const nl = body.indexOf("\n");
+      const rest = nl === -1 ? "" : body.slice(nl + 1).trim();
+      snippet.textContent = rest;
+      snippet.classList.toggle("hidden", !rest);
+      const date = document.createElement("div");
+      date.className = "noteDate";
+      date.textContent = fmtDate(n.updated);
+      card.append(title, snippet, date);
+      card.addEventListener("click", () => openNote(n.id));
+      notesList.appendChild(card);
+    }
+    emptyState.classList.toggle("hidden", notes.length > 0);
+    noteCount.textContent = notes.length ? notes.length + (notes.length === 1 ? " note" : " notes") : "";
+  }
+
+  /* ---------- Editor ---------- */
+  function openNote(id) {
+    const n = notes.find((x) => x.id === id);
+    if (!n) return;
+    currentId = id;
+    noteText.value = n.text;
+    noteMeta.textContent = "Created " + fmtDate(n.created);
+    listView.classList.add("hidden");
+    editorView.classList.remove("hidden");
+    updateRecordUI();
+  }
+  function backToList() {
+    currentId = null;
+    editorView.classList.add("hidden");
+    listView.classList.remove("hidden");
+    renderList();
+    updateRecordUI();
+  }
+  function saveCurrent() {
+    const n = notes.find((x) => x.id === currentId);
+    if (!n) return;
+    n.text = noteText.value;
+    n.updated = Date.now();
+    persist();
+  }
+
+  noteText.addEventListener("input", saveCurrent);
+  $("backBtn").addEventListener("click", backToList);
+
+  $("copyBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(noteText.value);
+      toast("Copied to clipboard");
+    } catch {
+      noteText.select();
+      document.execCommand("copy");
+      toast("Copied to clipboard");
+    }
+  });
+
+  $("deleteBtn").addEventListener("click", () => {
+    if (!confirm("Delete this note? This can't be undone.")) return;
+    notes = notes.filter((x) => x.id !== currentId);
+    persist();
+    backToList();
+    toast("Note deleted");
+  });
+
+  /* ---------- Recording ---------- */
+  let mediaRecorder = null, chunks = [], streamRef = null;
+  let timerInterval = null, startTime = 0;
+
+  function pickMime() {
+    if (typeof MediaRecorder === "undefined") return null;
+    for (const m of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm"]) {
+      if (MediaRecorder.isTypeSupported(m)) return m;
+    }
+    return "";
+  }
+
+  function startTimer() {
+    startTime = Date.now();
+    recTimer.textContent = "0:00";
+    timerInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - startTime) / 1000);
+      recTimer.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }, 250);
+  }
+  function stopTimer() {
+    clearInterval(timerInterval);
+    recTimer.textContent = "";
+  }
+
+  function updateRecordUI() {
+    recordBtn.classList.toggle("recording", recState === "recording");
+    recordBtn.classList.toggle("busy", recState === "busy");
+    if (recState === "recording") recHint.textContent = "Recording… tap to stop";
+    else if (recState === "busy") recHint.textContent = "Transcribing…";
+    else recHint.textContent = currentId ? "Tap to dictate into this note" : "Tap to dictate a new note";
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast("Microphone not available in this browser");
+      return;
+    }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      toast("Microphone access denied — allow it in your browser settings");
+      return;
+    }
+    streamRef = stream;
+    const mime = pickMime();
+    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    chunks = [];
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+    mediaRecorder.onstop = onRecordingStopped;
+    mediaRecorder.start();
+    recState = "recording";
+    updateRecordUI();
+    startTimer();
+  }
+
+  function stopRecording() {
+    stopTimer();
+    recState = "busy";
+    updateRecordUI();
+    try { mediaRecorder.stop(); } catch { recState = "idle"; updateRecordUI(); }
+    if (streamRef) streamRef.getTracks().forEach((t) => t.stop());
+  }
+
+  async function onRecordingStopped() {
+    const blob = new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" });
+    chunks = [];
+    try {
+      if (blob.size < 200) throw new Error("Recording was empty — try again");
+      const res = await fetch("/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": blob.type },
+        body: blob,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Server error (" + res.status + ")");
+      const text = (data.transcript || "").trim();
+      if (!text) {
+        toast("No speech detected — try again a little closer to the mic");
+      } else if (currentId) {
+        insertIntoNote(text);
+        toast("Added to note");
+      } else {
+        createNote(text);
+      }
+    } catch (err) {
+      toast(err.message || "Transcription failed");
+    } finally {
+      recState = "idle";
+      updateRecordUI();
+    }
+  }
+
+  function createNote(text) {
+    const n = { id: crypto.randomUUID(), text, created: Date.now(), updated: Date.now() };
+    notes.unshift(n);
+    persist();
+    openNote(n.id);
+  }
+
+  function insertIntoNote(text) {
+    const ta = noteText;
+    // If the textarea isn't focused, append at the end instead of at a stale cursor.
+    const focused = document.activeElement === ta;
+    const start = focused ? ta.selectionStart : ta.value.length;
+    const end = focused ? ta.selectionEnd : ta.value.length;
+    const before = ta.value.slice(0, start);
+    const after = ta.value.slice(end);
+    const glueBefore = before && !/\s$/.test(before) ? " " : "";
+    const glueAfter = after && !/^\s/.test(after) ? " " : "";
+    ta.value = before + glueBefore + text + glueAfter + after;
+    const pos = (before + glueBefore + text).length;
+    ta.setSelectionRange(pos, pos);
+    saveCurrent();
+  }
+
+  recordBtn.addEventListener("click", () => {
+    if (recState === "busy") return;
+    if (recState === "recording") stopRecording();
+    else startRecording();
+  });
+
+  searchInput.addEventListener("input", renderList);
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
+
+  renderList();
+  updateRecordUI();
+})();
+</script>
+</body>
+</html>
