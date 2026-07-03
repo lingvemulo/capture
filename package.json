@@ -1,11 +1,11 @@
 {
-  "name": "voice-notes",
+  "name": "capture",
   "version": "1.0.0",
   "private": true,
-  "description": "Personal dictation notes app — record, transcribe via Deepgram, save and edit notes. Cloudflare Worker + PWA.",
+  "description": "Capture — personal dictation notes app. Record, transcribe via Deepgram, save and edit notes. Cloudflare Pages + PWA.",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "dev": "wrangler pages dev",
+    "deploy": "wrangler pages deploy --branch production"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

@@ -1,6 +1,6 @@
 {
-  "name": "Voice Notes",
-  "short_name": "VoiceNotes",
+  "name": "Capture",
+  "short_name": "Capture",
   "description": "Personal dictation notes",
   "start_url": "/",
   "display": "standalone",

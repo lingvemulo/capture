@@ -1,4 +1,4 @@
-const CACHE = "voice-notes-v1";
+const CACHE = "capture-v1";
 const SHELL = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (e) => {

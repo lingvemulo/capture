@@ -25,7 +25,7 @@ async function transcribe(request, env) {
     return json(
       {
         error:
-          "Transcription isn't set up yet. Run: npx wrangler secret put DEEPGRAM_API_KEY",
+          "Transcription isn't set up yet. Run: npx wrangler pages secret put DEEPGRAM_API_KEY",
       },
       503
     );
